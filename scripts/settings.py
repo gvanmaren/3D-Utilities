@@ -8,3 +8,9 @@ TOOLNAME2 = "CreateLaterals"
 # error name
 # used when printing errors
 ERROR = "error"
+
+# global fields
+UNDEFINED = "Undefined"
+DIAMETER_FIELD = "util_diameter"
+RADIUS_FIELD = "util_radius"
+SLOPE_FIELD = "util_slope"
