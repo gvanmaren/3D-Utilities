@@ -3,8 +3,13 @@ import time
 import os
 import math
 import sys
-import scripts.CommonLib as CommonLib
-from scripts.CommonLib import create_msg_body, msg, trace
+
+import scripts.create_surface_hole as create_surface_hole
+import importlib
+importlib.reload(create_surface_hole)  # force reload of the module
+
+import scripts.common_lib as common_lib
+from scripts.common_lib import create_msg_body, msg, trace
 from scripts.settings import *
 
 
@@ -143,9 +148,9 @@ class Create3DGravityMains(object):
         layer_directory = aprx.homeFolder + "\\LayerFiles"
 
         layer.symbology = os.path.join(layer_directory, 'Line3DError.lyrx')
-        layer2.symbology = os.path.join(layer_directory, 'Line3DError_Meters.lyrx')
+        layer2.symbology = os.path.join(layer_directory, 'Line3DError_meters.lyrx')
         layer3.symbology = os.path.join(layer_directory, 'LineObject3DError.lyrx')
-        layer4.symbology = os.path.join(layer_directory, 'LineObject3DError_Meters.lyrx')
+        layer4.symbology = os.path.join(layer_directory, 'LineObject3DError_meters.lyrx')
 
         params = [input_features, upper_elevation, lower_elevation, invert_unit, diameter, diameter_unit, default_diameter,
                     output_features, output_3dobjects, use_nearby_points, zero_as_error, error_elevation, interpolate_errors,
@@ -402,7 +407,7 @@ class Create3DGravityMains(object):
             try:
                 # cycle through features, get minimum and maximum value
                 # create a list of unique "Attribute" values
-                unique_field_values = CommonLib.unique_values(local_input_features, attribute)
+                unique_field_values = common_lib.unique_values(local_input_features, attribute)
 
                 return [unique_field_values[0], unique_field_values[len(unique_field_values) - 1]]
 
@@ -475,12 +480,12 @@ class Create3DGravityMains(object):
                 # set all diameter values on input fc
                 # check if diameter attribute exists
 
-                CommonLib.delete_add_field(input_fc, DIAMETER_FIELD, "DOUBLE")
+                common_lib.delete_add_field(input_fc, DIAMETER_FIELD, "DOUBLE")
 
                 if lc_diameter:
-                    if CommonLib.check_fields(input_fc, [lc_diameter], False, verbose) == 0:
+                    if common_lib.check_fields(input_fc, [lc_diameter], False, verbose) == 0:
                         arcpy.CalculateField_management(input_fc, DIAMETER_FIELD, "!" + lc_diameter + "!", "PYTHON_9.3")
-                        CommonLib.set_null_or_negative_to_value_in_fields(input_fc, [DIAMETER_FIELD],
+                        common_lib.set_null_or_negative_to_value_in_fields(input_fc, [DIAMETER_FIELD],
                                                                           [lc_default_diameter],
                                                                           True, verbose)
                     else:  # create a default attribute
@@ -489,11 +494,11 @@ class Create3DGravityMains(object):
                     arcpy.CalculateField_management(input_fc, DIAMETER_FIELD, lc_default_diameter, "PYTHON_9.3")
 
                 # copy upper and lower elevation attributes so we can modify them
-                CommonLib.delete_add_field(input_fc, start_elevation_field, "DOUBLE")
+                common_lib.delete_add_field(input_fc, start_elevation_field, "DOUBLE")
                 arcpy.CalculateField_management(input_fc, start_elevation_field,
                                                 "!" + upper_invert_elevation_field + "!",
                                                 "PYTHON_9.3")
-                CommonLib.delete_add_field(input_fc, end_elevation_field, "DOUBLE")
+                common_lib.delete_add_field(input_fc, end_elevation_field, "DOUBLE")
                 arcpy.CalculateField_management(input_fc, end_elevation_field, "!" + lower_invert_elevation_field + "!",
                                                 "PYTHON_9.3")
 
@@ -506,7 +511,7 @@ class Create3DGravityMains(object):
                 # use elevation surface through good point to interpolate bad values
                 if lc_interpolate_errors:
                     Z_field = "Z"
-                    surface = CommonLib.create_surface_from_points(ws, tin_ws, Points2D_interpolated, elevation_field,
+                    surface = common_lib.create_surface_from_points(ws, tin_ws, Points2D_interpolated, elevation_field,
                                                                    error_elevation)
 
                     if surface:
@@ -544,7 +549,7 @@ class Create3DGravityMains(object):
                 arcpy.JoinField_management(lines3D, lineOID_field, input_fc, lineOID_field)
 
                 # calculate error field
-                CommonLib.delete_add_field(lines3D, error_field, line_fieldtype)
+                common_lib.delete_add_field(lines3D, error_field, line_fieldtype)
                 arcpy.AddMessage("Calculating errors ...")
 
                 s = 0
@@ -577,7 +582,7 @@ class Create3DGravityMains(object):
                         s += 1
 
                 # cleaning up
-                CommonLib.delete_fields(input_fc, [start_elevation_field, end_elevation_field])
+                common_lib.delete_fields(input_fc, [start_elevation_field, end_elevation_field])
 
                 return lines3D
 
@@ -657,13 +662,13 @@ class Create3DGravityMains(object):
             layer_directory_pack = "LayerFiles"
             layer_file = "Line3DError.lyrx"
 
-            CommonLib.set_data_paths_for_packaging(data_directory_pack, geodatabase, feature_class, model_directory_pack,
+            common_lib.set_data_paths_for_packaging(data_directory_pack, geodatabase, feature_class, model_directory_pack,
                                                    model_file, rule_directory_pack, rule_file, layer_directory_pack, layer_file)
 
             if not os.path.exists(tin_directory):
                 os.makedirs(tin_directory)
 
-            CommonLib.set_up_logging(log_directory, TOOLNAME1)
+            common_lib.set_up_logging(log_directory, TOOLNAME1)
             start_time = time.clock()
 
             ORIG_FID = "ORIG_FID"
@@ -675,7 +680,7 @@ class Create3DGravityMains(object):
             slope_field = "calc_slope"
             z_field = "Z"
 
-            scratch_ws = CommonLib.create_gdb(home_directory, "Intermediate.gdb")
+            scratch_ws = common_lib.create_gdb(home_directory, "Intermediate.gdb")
             output_ws = os.path.dirname(output_features)
 
             if arcpy.Exists(output_ws):
@@ -688,7 +693,7 @@ class Create3DGravityMains(object):
                     if arcpy.CheckExtension("Spatial") == "Available":
                         arcpy.CheckOutExtension("Spatial")
 
-                        arcpy.AddMessage("Processing input features: " + CommonLib.get_name_from_feature_class(input_layer))
+                        arcpy.AddMessage("Processing input features: " + common_lib.get_name_from_feature_class(input_layer))
 
                         objects3D = None
                         objects3D_layer = None
@@ -697,13 +702,13 @@ class Create3DGravityMains(object):
 
                         # make a copy of the input feature class
                         input_fc = os.path.join(scratch_ws,
-                                                CommonLib.get_name_from_feature_class(input_layer) + "_copy")
+                                                common_lib.get_name_from_feature_class(input_layer) + "_copy")
                         if arcpy.Exists(input_fc):
                             arcpy.Delete_management(input_fc)
 
                         # write to fc
                         arcpy.AddMessage(
-                            "Copying " + CommonLib.get_name_from_feature_class(input_layer) + " to " + input_fc)
+                            "Copying " + common_lib.get_name_from_feature_class(input_layer) + " to " + input_fc)
                         arcpy.CopyFeatures_management(input_layer, input_fc)
 
                         # just because of this schema lock
@@ -724,21 +729,21 @@ class Create3DGravityMains(object):
                         arcpy.CalculateField_management(input_layer, unique_id_field, "!" + lineOID + "!", "PYTHON_9.3")
 
                         # create start and end elevation attributes in segment elevation units
-                        layer_unit = CommonLib.get_xy_unit(input_layer, verbose)
+                        layer_unit = common_lib.get_xy_unit(input_layer, verbose)
 
-                        CommonLib.delete_add_field(input_layer, esri_upper_elevation_field, "DOUBLE")
-                        CommonLib.delete_add_field(input_layer, esri_lower_elevation_field, "DOUBLE")
+                        common_lib.delete_add_field(input_layer, esri_upper_elevation_field, "DOUBLE")
+                        common_lib.delete_add_field(input_layer, esri_lower_elevation_field, "DOUBLE")
 
                         if not vertex_elevation_unit:
                             vertex_elevation_unit = layer_unit
                             arcpy.AddMessage(
                                 "No invert elevation unit detected. Using  XY units instead: " + vertex_elevation_unit)
 
-                        conversion_factor = CommonLib.unitConversion(layer_unit, vertex_elevation_unit, verbose)
-                        CommonLib.calculate_field_from_other_field(input_layer, input_fc, start_vertex_elevation,
+                        conversion_factor = common_lib.unitConversion(layer_unit, vertex_elevation_unit, verbose)
+                        common_lib.calculate_field_from_other_field(input_layer, input_fc, start_vertex_elevation,
                                                                    esri_upper_elevation_field,
                                                                    "multiply", conversion_factor, verbose)
-                        CommonLib.calculate_field_from_other_field(input_layer, input_fc, end_vertex_elevation,
+                        common_lib.calculate_field_from_other_field(input_layer, input_fc, end_vertex_elevation,
                                                                    esri_lower_elevation_field,
                                                                    "multiply", conversion_factor, verbose)
 
@@ -754,15 +759,15 @@ class Create3DGravityMains(object):
                             arcpy.AddMessage("Setting the error elevation value to: " + str(error_elevation))
 
                         # create diameter attribute in segment elevation units
-                        CommonLib.delete_add_field(input_layer, esri_diameter_field, "DOUBLE")
+                        common_lib.delete_add_field(input_layer, esri_diameter_field, "DOUBLE")
 
                         if not diameter_unit:
                             diameter_unit = layer_unit
                             arcpy.AddMessage("No Diameter Unit detected. Using  XY units instead: " + diameter_unit)
 
                         if diameter:
-                            conversion_factor = CommonLib.unitConversion(layer_unit, diameter_unit, verbose)
-                            CommonLib.calculate_field_from_other_field(input_layer, input_fc, diameter,
+                            conversion_factor = common_lib.unitConversion(layer_unit, diameter_unit, verbose)
+                            common_lib.calculate_field_from_other_field(input_layer, input_fc, diameter,
                                                                        esri_diameter_field,
                                                                        "multiply", conversion_factor, verbose)
                         else:
@@ -777,13 +782,13 @@ class Create3DGravityMains(object):
                                                                 zero_as_error, error_elevation,
                                                                 interpolate_errors, debug)
 
-                        Line3D_layer = CommonLib.get_name_from_feature_class(Line3D)
+                        Line3D_layer = common_lib.get_name_from_feature_class(Line3D)
                         arcpy.MakeFeatureLayer_management(Line3D, Line3D_layer)
 
-                        if CommonLib.get_z_unit(Line3D_layer, 0) == "Feet":
+                        if common_lib.get_z_unit(Line3D_layer, 0) == "Feet":
                             SymbologyLayer = layer_directory + "\\Line3DError.lyrx"
                         else:
-                            SymbologyLayer = layer_directory + "\\Line3DError_Meters.lyrx"
+                            SymbologyLayer = layer_directory + "\\Line3DError_meters.lyrx"
 
                         if not arcpy.Exists(SymbologyLayer):
                             arcpy.AddWarning("Can't find: " + SymbologyLayer + ". Symbolize features by error attribute to see data errors.")
@@ -800,30 +805,30 @@ class Create3DGravityMains(object):
                             arcpy.AddMessage("Checking for self intersections (OGC Validation)...")
                             arcpy.RepairGeometry_management(Line3D, "#", "OGC")
 
-                            arcpy.AddMessage("Buffering: " + CommonLib.get_name_from_feature_class(Line3D))
+                            arcpy.AddMessage("Buffering: " + common_lib.get_name_from_feature_class(Line3D))
                             arcpy.AddMessage("This might take some time depending on the number of lines.")
 
-                            CommonLib.delete_add_field(Line3D, RADIUS_FIELD, "DOUBLE")
+                            common_lib.delete_add_field(Line3D, RADIUS_FIELD, "DOUBLE")
                             arcpy.CalculateField_management(Line3D, RADIUS_FIELD, "!" + DIAMETER_FIELD + "! / 2",
                                                             "PYTHON_9.3")
 
                             arcpy.Buffer3D_3d(Line3D, objects3D, RADIUS_FIELD, 'Straight', '10')
 
-                            objects3D_layer = CommonLib.get_name_from_feature_class(objects3D)
+                            objects3D_layer = common_lib.get_name_from_feature_class(objects3D)
                             arcpy.MakeFeatureLayer_management(objects3D, objects3D_layer)
 
-                            if CommonLib.get_z_unit(objects3D_layer, 0) == "Feet":
+                            if common_lib.get_z_unit(objects3D_layer, 0) == "Feet":
                                 SymbologyLayer = layer_directory + "\\LineObject3DError.lyrx"
                             else:
-                                SymbologyLayer = layer_directory + "\\LineObject3DError_Meters.lyrx"
+                                SymbologyLayer = layer_directory + "\\LineObject3DError_meters.lyrx"
 
                             if not arcpy.Exists(SymbologyLayer):
                                 arcpy.AddWarning("Can't find: " + SymbologyLayer + ". Symbolize features by error attribute to see data errors.")
 
                             # check if any of the lines failed buffering
-                            org_line_ids_line = CommonLib.get_row_values_for_fields(None, Line3D, [unique_id_field],
+                            org_line_ids_line = common_lib.get_row_values_for_fields(None, Line3D, [unique_id_field],
                                                                                     None, "no_expression")
-                            org_line_ids_object = CommonLib.get_row_values_for_fields(None, objects3D,
+                            org_line_ids_object = common_lib.get_row_values_for_fields(None, objects3D,
                                                                                       [unique_id_field], None,
                                                                                       "no_expression")
 
@@ -834,12 +839,12 @@ class Create3DGravityMains(object):
                                     difference) + " Check geometries!")
 
                         if DeleteIntermediateData:
-                            fcs = CommonLib.listFcsInGDB(scratch_ws)
+                            fcs = common_lib.listFcsInGDB(scratch_ws)
 
                             msg_prefix = "Deleting intermediate data..."
 
-                            msg_body = CommonLib.create_msg_body(msg_prefix, 0, 0)
-                            CommonLib.msg(msg_body)
+                            msg_body = common_lib.create_msg_body(msg_prefix, 0, 0)
+                            common_lib.msg(msg_body)
 
                             for fc in fcs:
                                 arcpy.Delete_management(fc)
@@ -933,15 +938,15 @@ class Create3DGravityMains(object):
                                                             debug=0)
 
                 if lines_3d:
-                    arcpy.AddMessage("Adding: " + CommonLib.get_name_from_feature_class(lines_3d))
+                    arcpy.AddMessage("Adding: " + common_lib.get_name_from_feature_class(lines_3d))
 
-                    if CommonLib.get_z_unit(lines_3d, 0) == "Feet":
+                    if common_lib.get_z_unit(lines_3d, 0) == "Feet":
                         arcpy.SetParameter(13, lines_3d)
                     else:
                         arcpy.SetParameter(14, lines_3d)
 
                     if objects_3d:
-                        if CommonLib.get_z_unit(objects_3d, 0) == "Feet":
+                        if common_lib.get_z_unit(objects_3d, 0) == "Feet":
                             arcpy.SetParameter(15, objects_3d)
                         else:
                             arcpy.SetParameter(16, objects_3d)
@@ -1243,12 +1248,12 @@ class Create3DLaterals(object):
                 sort_field = "ORIG_FID"
 
                 # make a copy of the input feature class
-                input_fc = os.path.join(cl3D_ws, CommonLib.get_name_from_feature_class(cl3D_laterals) + "_copy")
+                input_fc = os.path.join(cl3D_ws, common_lib.get_name_from_feature_class(cl3D_laterals) + "_copy")
                 if arcpy.Exists(input_fc):
                     arcpy.Delete_management(input_fc)
 
                 # write to fc
-                arcpy.AddMessage("Copying " + CommonLib.get_name_from_feature_class(cl3D_laterals) + " to " + input_fc)
+                arcpy.AddMessage("Copying " + common_lib.get_name_from_feature_class(cl3D_laterals) + " to " + input_fc)
                 arcpy.CopyFeatures_management(cl3D_laterals, input_fc)
 
                 # create 3D lines from 2D lines (note only end points of lines are used to created 3D lines!)
@@ -1262,12 +1267,12 @@ class Create3DLaterals(object):
 
                 arcpy.AddMessage("Extracting Start Points...")
 
-                CommonLib.delete_add_field(input_fc, DIAMETER_FIELD, "DOUBLE")
+                common_lib.delete_add_field(input_fc, DIAMETER_FIELD, "DOUBLE")
 
                 # set diameter values
                 if cl3D_diameter:
-                    if CommonLib.check_fields(input_fc, [cl3D_diameter], True, cl3D_verbose) == 0:
-                        CommonLib.set_null_or_negative_to_value_in_fields(input_fc, [cl3D_diameter],
+                    if common_lib.check_fields(input_fc, [cl3D_diameter], True, cl3D_verbose) == 0:
+                        common_lib.set_null_or_negative_to_value_in_fields(input_fc, [cl3D_diameter],
                                                                           [cl3D_default_diameter], True, cl3D_verbose)
                         arcpy.CalculateField_management(input_fc, DIAMETER_FIELD, "!" + cl3D_diameter + "!",
                                                         "PYTHON_9.3")
@@ -1276,12 +1281,12 @@ class Create3DLaterals(object):
                 else:
                     arcpy.CalculateField_management(input_fc, DIAMETER_FIELD, cl3D_default_diameter, "PYTHON_9.3")
 
-                CommonLib.delete_add_field(input_fc, SLOPE_FIELD, "DOUBLE")
+                common_lib.delete_add_field(input_fc, SLOPE_FIELD, "DOUBLE")
 
                 # set slope values
                 if cl3D_slope:
-                    if CommonLib.check_fields(input_fc, [cl3D_slope], True, cl3D_verbose) == 0:
-                        CommonLib.set_null_or_negative_to_value_in_fields(input_fc, [cl3D_slope], [cl3D_default_slope],
+                    if common_lib.check_fields(input_fc, [cl3D_slope], True, cl3D_verbose) == 0:
+                        common_lib.set_null_or_negative_to_value_in_fields(input_fc, [cl3D_slope], [cl3D_default_slope],
                                                                           True, cl3D_verbose)
                         arcpy.CalculateField_management(input_fc, SLOPE_FIELD, "!" + cl3D_slope + "!", "PYTHON_9.3")
                     else:  # create a default attribute
@@ -1292,18 +1297,18 @@ class Create3DLaterals(object):
                 # get start and end points and set line order and elevation attribute
                 arcpy.AddMessage("Calculating End Point elevations")
                 arcpy.FeatureVerticesToPoints_management(input_fc, LineEndPoints, "END")
-                CommonLib.delete_add_field(LineEndPoints, elevation_field, elevation_fieldtype)
+                common_lib.delete_add_field(LineEndPoints, elevation_field, elevation_fieldtype)
                 arcpy.AddSurfaceInformation_3d(LineEndPoints, cl3D_tin, "Z", "BILINEAR")
 
                 arcpy.CalculateField_management(LineEndPoints, elevation_field, "!Z!", "PYTHON_9.3", None)
-                CommonLib.set_null_to_value_in_fields(LineEndPoints, [elevation_field], [0], True, cl3D_verbose)
+                common_lib.set_null_to_value_in_fields(LineEndPoints, [elevation_field], [0], True, cl3D_verbose)
 
-                CommonLib.delete_add_field(LineEndPoints, line_field, line_fieldtype)
+                common_lib.delete_add_field(LineEndPoints, line_field, line_fieldtype)
                 arcpy.CalculateField_management(LineEndPoints, line_field, "2", "PYTHON_9.3", None)
 
                 arcpy.AddMessage("Calculating Start Point elevations")
                 arcpy.FeatureVerticesToPoints_management(input_fc, LineStartPoints, "START")
-                CommonLib.delete_add_field(LineStartPoints, elevation_field, elevation_fieldtype)
+                common_lib.delete_add_field(LineStartPoints, elevation_field, elevation_fieldtype)
 
                 # join slope field based on sort_field
                 arcpy.JoinField_management(LineStartPoints, sort_field, input_fc, arcpy.Describe(input_fc).OIDFieldName,
@@ -1317,7 +1322,7 @@ class Create3DLaterals(object):
                     calculateStartZPointfromSlope(LineStartPoints, LineEndPoints, elevation_field, sort_field,
                                                   SLOPE_FIELD, cl3D_verbose)
 
-                CommonLib.delete_add_field(LineStartPoints, line_field, line_fieldtype)
+                common_lib.delete_add_field(LineStartPoints, line_field, line_fieldtype)
                 arcpy.CalculateField_management(LineStartPoints, line_field, "1", "PYTHON_9.3", None)
 
                 # merge start and end points
@@ -1387,7 +1392,7 @@ class Create3DLaterals(object):
                 msg_prefix = ""
                 failed = True
 
-                mains_full_name = CommonLib.get_full_path_from_layer(lc_3d_mains)
+                mains_full_name = common_lib.get_full_path_from_layer(lc_3d_mains)
 
                 if lc_building_fp:
                     tin_string = "{} Shape.Z Hard_Line <None>;{} Shape.Z  Hardvalue_Fill <None>".format(mains_full_name,
@@ -1490,7 +1495,7 @@ class Create3DLaterals(object):
             layer_directory_pack = "LayerFiles"
             layer_file = "Line3DError.lyrx"
 
-            CommonLib.set_data_paths_for_packaging(data_directory_pack, geodatabase, feature_class, model_directory_pack,
+            common_lib.set_data_paths_for_packaging(data_directory_pack, geodatabase, feature_class, model_directory_pack,
                                                    model_file, rule_directory_pack, rule_file, layer_directory_pack,
                                                    layer_file)
 
@@ -1499,10 +1504,10 @@ class Create3DLaterals(object):
             if not os.path.exists(tin_directory):
                 os.makedirs(tin_directory)
 
-            CommonLib.set_up_logging(log_directory, TOOLNAME2)
+            common_lib.set_up_logging(log_directory, TOOLNAME2)
             start_time = time.clock()
 
-            scratch_ws = CommonLib.create_gdb(home_directory, "Intermediate.gdb")
+            scratch_ws = common_lib.create_gdb(home_directory, "Intermediate.gdb")
             output_ws = os.path.dirname(output_features)
 
             if arcpy.Exists(output_ws):
@@ -1515,7 +1520,7 @@ class Create3DLaterals(object):
                     if arcpy.CheckExtension("Spatial") == "Available":
                         arcpy.CheckOutExtension("Spatial")
 
-                        arcpy.AddMessage("Processing input features: " + CommonLib.get_name_from_feature_class(input_layer))
+                        arcpy.AddMessage("Processing input features: " + common_lib.get_name_from_feature_class(input_layer))
 
                         objects3D = None
                         objects3D_layer = None
@@ -1533,9 +1538,9 @@ class Create3DLaterals(object):
                             output_name = str(os.path.basename(output_features))
 
                             # create diameter attribute in segment elevation units
-                            layer_unit = CommonLib.get_xy_unit(input_layer, verbose)
+                            layer_unit = common_lib.get_xy_unit(input_layer, verbose)
 
-                            CommonLib.delete_add_field(input_layer, esri_diameter_field, "DOUBLE")
+                            common_lib.delete_add_field(input_layer, esri_diameter_field, "DOUBLE")
 
                             if not diameter_unit:
                                 diameter_unit = layer_unit
@@ -1544,7 +1549,7 @@ class Create3DLaterals(object):
 
                             if diameter:
                                 expression = "!" + diameter + "! * " + str(
-                                    CommonLib.unitConversion(layer_unit, diameter_unit, verbose))
+                                    common_lib.unitConversion(layer_unit, diameter_unit, verbose))
                                 arcpy.CalculateField_management(input_layer, esri_diameter_field, expression,
                                                                 "PYTHON_9.3")
                             else:
@@ -1557,10 +1562,10 @@ class Create3DLaterals(object):
                                                      default_diameter,
                                                      slope, default_slope, output_name, verbose)
 
-                            Line3D_layer = CommonLib.get_name_from_feature_class(Line3D)
+                            Line3D_layer = common_lib.get_name_from_feature_class(Line3D)
                             arcpy.MakeFeatureLayer_management(Line3D, Line3D_layer)
 
-                            if CommonLib.get_z_unit(Line3D_layer, 0) == "Feet":
+                            if common_lib.get_z_unit(Line3D_layer, 0) == "Feet":
                                 SymbologyLayer = layer_directory + "\\LateralLine3D.lyrx"
                             else:
                                 SymbologyLayer = layer_directory + "\\LateralLine3D_Meters.lyrx"
@@ -1574,20 +1579,20 @@ class Create3DLaterals(object):
                                 if arcpy.Exists(objects3D):
                                     arcpy.Delete_management(objects3D)
 
-                                arcpy.AddMessage("Buffering: " + CommonLib.get_name_from_feature_class(Line3D))
+                                arcpy.AddMessage("Buffering: " + common_lib.get_name_from_feature_class(Line3D))
                                 arcpy.AddMessage("This might take some time depending on the number of lines.")
 
-                                CommonLib.delete_add_field(Line3D, RADIUS_FIELD, "DOUBLE")
+                                common_lib.delete_add_field(Line3D, RADIUS_FIELD, "DOUBLE")
                                 arcpy.CalculateField_management(Line3D, RADIUS_FIELD,
                                                                 "!" + DIAMETER_FIELD + "! / 2",
                                                                 "PYTHON_9.3")
 
                                 arcpy.Buffer3D_3d(Line3D, objects3D, RADIUS_FIELD, 'Straight', '10')
 
-                                objects3D_layer = CommonLib.get_name_from_feature_class(objects3D)
+                                objects3D_layer = common_lib.get_name_from_feature_class(objects3D)
                                 arcpy.MakeFeatureLayer_management(objects3D, objects3D_layer)
 
-                                if CommonLib.get_z_unit(objects3D_layer, 0) == "Feet":
+                                if common_lib.get_z_unit(objects3D_layer, 0) == "Feet":
                                     SymbologyLayer = layer_directory + "\\LateralObject3D.lyrx"
                                 else:
                                     SymbologyLayer = layer_directory + "\\LateralObject3D_meter.lyrx"
@@ -1601,12 +1606,12 @@ class Create3DLaterals(object):
                                                        end_time)
 
                             if DeleteIntermediateData:
-                                fcs = CommonLib.listFcsInGDB(scratch_ws)
+                                fcs = common_lib.listFcsInGDB(scratch_ws)
 
                                 msg_prefix = "Deleting intermediate data..."
 
-                                msg_body = CommonLib.create_msg_body(msg_prefix, 0, 0)
-                                CommonLib.msg(msg_body)
+                                msg_body = common_lib.create_msg_body(msg_prefix, 0, 0)
+                                common_lib.msg(msg_body)
 
                                 for fc in fcs:
                                     arcpy.Delete_management(fc)
@@ -1614,7 +1619,7 @@ class Create3DLaterals(object):
                             arcpy.ClearWorkspaceCache_management()
 
                             end_time = time.clock()
-                            msg_body = create_msg_body("Create 3D Gravity Mains completed successfully.", start_time,
+                            msg_body = create_msg_body("Create 3D Laterals completed successfully.", start_time,
                                                        end_time)
                             msg(msg_body)
 
@@ -1701,15 +1706,15 @@ class Create3DLaterals(object):
                                                     debug=0)
 
                 if lines_3d:
-                    arcpy.AddMessage("Adding: " + CommonLib.get_name_from_feature_class(lines_3d))
+                    arcpy.AddMessage("Adding: " + common_lib.get_name_from_feature_class(lines_3d))
 
-                    if CommonLib.get_z_unit(lines_3d, 0) == "Feet":
+                    if common_lib.get_z_unit(lines_3d, 0) == "Feet":
                         arcpy.SetParameter(9, lines_3d)
                     else:
                         arcpy.SetParameter(10, lines_3d)
 
                     if objects_3d:
-                        if CommonLib.get_z_unit(objects_3d, 0) == "Feet":
+                        if common_lib.get_z_unit(objects_3d, 0) == "Feet":
                             arcpy.SetParameter(11, objects_3d)
                         else:
                             arcpy.SetParameter(12, objects_3d)
@@ -1726,11 +1731,954 @@ class Create3DLaterals(object):
             print("Can't create output. Exiting...")
             arcpy.AddError("Can't create output. Exiting...")
 
+class Create3DManholes(object):
+    def __init__(self):
+        """Define the tool (tool name is the name of the class)."""
+        self.label = "Create 3D Manholes"
+        self.description = "Creates 3D manhole points from 2D and 3D manholes " + \
+                            "points with rim and invert elevation attributes."
+        self.canRunInBackground = False
+
+    def getParameterInfo(self):
+        """Define parameter definitions"""
+        input_features = arcpy.Parameter(displayName="Input Features",
+                                  name="InputFeatures",
+                                  datatype=["DEFeatureClass", "GPLayer"],
+                                  parameterType="Required",
+                                  direction="Input")
+
+        upper_elevation = arcpy.Parameter(displayName="Upper Invert Elevation",
+                                  name="UpperInvertElevation",
+                                  datatype = "GPString",
+                                  parameterType="Required",
+                                  direction="Input")
+
+        lower_elevation = arcpy.Parameter(displayName="Lower Invert Elevation",
+                                  name="LowerInvertElevation",
+                                  datatype = "GPString",
+                                  parameterType="Required",
+                                  direction="Input")
+
+        invert_unit = arcpy.Parameter(displayName="Invert Elevation Unit",
+                                  name="InvertElevationUnit",
+                                  datatype = "GPString",
+                                  parameterType="Optional",
+                                  direction="Input")
+
+        diameter = arcpy.Parameter(displayName="Diameter",
+                                  name="Diameter",
+                                  datatype = "GPString",
+                                  parameterType="Optional",
+                                  direction="Input")
+
+        diameter_unit = arcpy.Parameter(displayName="Diameter Unit",
+                                  name="DiameterUnit",
+                                  datatype = "GPString",
+                                  parameterType="Required",
+                                  direction="Input")
+
+        default_diameter = arcpy.Parameter(displayName="Default Diameter",
+                                  name="DefaultDiameter",
+                                  datatype = "GPDouble",
+                                  parameterType="Required",
+                                  direction="Input")
+
+        output_features = arcpy.Parameter(displayName="Output Features",
+                                  name="OutputFeatures",
+                                  datatype="DEFeatureClass",
+                                  parameterType="Required",
+                                  direction="Output")
+
+        output_3dobjects = arcpy.Parameter(displayName="Output As 3D Objects",
+                                  name="OutputAs3DObjects",
+                                  datatype="GPBoolean",
+                                  parameterType="Required",
+                                  direction="Input")
+
+        zero_as_error = arcpy.Parameter(displayName="Treat 0 as Error",
+                                  name="Treat0asError",
+                                  datatype="GPBoolean",
+                                  parameterType="Optional",
+                                  direction="Input")
+
+        error_elevation = arcpy.Parameter(displayName="Error Elevation Value",
+                                  name="ErrorElevationValue",
+                                  datatype = "GPDouble",
+                                  parameterType="Optional",
+                                  direction="Input")
+
+        interpolate_errors = arcpy.Parameter(displayName="Interpolate Errors",
+                                  name="InterpolateErrors",
+                                  datatype = "GPBoolean",
+                                  parameterType="Optional",
+                                  direction="Input")
+
+        input_raster = arcpy.Parameter(displayName="Terrain Surface",
+                                  name="TerrainSurface",
+                                  datatype="GPRasterLayer",
+                                  parameterType="Optional",
+                                  direction="Input")
+
+        layer = arcpy.Parameter(displayName="layer",
+                                  name="layer",
+                                  datatype="GPFeatureLayer",
+                                  parameterType="Derived", enabled=True,
+                                  direction="Output")
+
+        layer2 = arcpy.Parameter(displayName="layer2",
+                                  name="layer2",
+                                  datatype="GPFeatureLayer",
+                                  parameterType="Derived", enabled=True,
+                                  direction="Output")
+
+        layer3 = arcpy.Parameter(displayName="layer3",
+                                  name="layer3",
+                                  datatype="GPFeatureLayer",
+                                  parameterType="Derived", enabled=True,
+                                  direction="Output")
+
+        layer4 = arcpy.Parameter(displayName="layer4",
+                                  name="layer4",
+                                  datatype="GPFeatureLayer",
+                                  parameterType="Derived", enabled=True,
+                                  direction="Output")
+
+        default_diameter.value = 1
+        diameter_unit.enabled = False
+        diameter_unit.value = UNDEFINED
+        invert_unit.value = None
+        output_3dobjects.value = False
+        zero_as_error.value = False
+        interpolate_errors.value = False
+        error_elevation.value = 9999
+        input_raster.value = None
+        input_raster.enabled = False
+
+        zero_as_error.category = 'Error Handling'
+        error_elevation.category = 'Error Handling'
+        interpolate_errors.category = 'Error Handling'
+        input_raster.category = 'Error Handling'
+
+        layer.parameterDependencies = [input_features.name]
+        layer2.parameterDependencies = [input_features.name]
+        layer3.parameterDependencies = [input_features.name]
+        layer4.parameterDependencies = [input_features.name]
+
+        aprx = arcpy.mp.ArcGISProject("CURRENT")
+        layer_directory = aprx.homeFolder + "\\LayerFiles"
+
+        layer.symbology = os.path.join(layer_directory, 'Point3DError.lyrx')
+        layer2.symbology = os.path.join(layer_directory, 'Point3DError_meter.lyrx')
+        layer3.symbology = os.path.join(layer_directory, 'PointObject3DError.lyrx')
+        layer4.symbology = os.path.join(layer_directory, 'PointObject3DError_meter.lyrx')
+
+        params = [input_features, upper_elevation, lower_elevation, invert_unit, diameter, diameter_unit, default_diameter,
+                    output_features, output_3dobjects, zero_as_error, error_elevation, interpolate_errors, input_raster,
+                    layer, layer2, layer3, layer4]
+        return params
+
+    def isLicensed(self):
+        """Set whether tool is licensed to execute."""
+        return True
+
+
+    def updateParameters(self, params):
+        """Modify the values and properties of parameters before internal
+        validation is performed.  This method is called whenever a parameter
+        has been changed."""
+
+        aprx = arcpy.mp.ArcGISProject("CURRENT")
+
+        if params[0].value:
+            if arcpy.Exists(params[0].value):
+                fields = arcpy.ListFields(params[0].value)
+                real_fields_list = []
+                params[1].filter.list = []
+
+                for f in fields:
+                    if f.type == "Double" or f.type == "Integer" or f.type == "SmallInteger" or f.type == "Single":
+                        real_fields_list.append(f.name)
+
+                params[1].filter.list = sorted(set(real_fields_list))
+                params[2].filter.list = sorted(set(real_fields_list))
+
+                if params[1].value and params[2].value:
+                    full_list = sorted(set(real_fields_list))
+                    full_list.remove(params[1].value)
+                    full_list.remove(params[2].value)
+                    params[4].filter.list = full_list
+
+        unitList1 = ["Inches", "Feet", "Millimeters", "Centimeters", "Meters"]
+        unitList2 = [UNDEFINED, "Inches", "Feet", "Millimeters", "Centimeters", "Meters"]
+        params[3].filter.list = unitList1
+        params[5].filter.list = unitList2
+
+        if params[4].value:
+            params[5].enabled = True
+        else:
+            params[5].enabled = False
+
+        if params[11].value:
+            params[12].enabled = True
+        else:
+            params[12].enabled = False
+
+        return
+
+    def updateMessages(self, params):
+        """Modify the messages created by internal validation for each tool
+        parameter.  This method is called after internal validation."""
+
+        if params[4].value and not params[5].value:
+            params[5].setErrorMessage('Diameter Unit is required if a diameter attribute has been selected!')
+
+        if params[11].value and not params[12].value:
+            params[12].setErrorMessage('Terrain Surface is required if Interpolate Errors is set!')
+
+        return
+
+    @staticmethod
+    def run(input_layer, rim_elevation, invert_elevation,
+                vertex_elevation_unit, diameter, diameter_unit, default_diameter,
+                output_features, output_as_3dobject,
+                zero_as_error, error_elevation, interpolate_errors, terrain_surface,
+                debug):
+
+        """The source code of the tool."""
+        # error classes
+
+        class NoNoDataError(Exception):
+            pass
+
+        class LicenseError3D(Exception):
+            pass
+
+        class LicenseErrorSpatial(Exception):
+            pass
+
+        class SchemaLock(Exception):
+            pass
+
+        class NotSupported(Exception):
+            pass
+
+        class NoLayerFile(Exception):
+            pass
+
+        class FunctionError(Exception):
+            pass
+
+        class NoFeatures(Exception):
+            pass
+
+        def Create3DPointFromPointAttributes(out_ws, ws, out_name, tin_ws, lc_input_layer,
+                                             upper_rim_elevation_field, lower_invert_elevation_field,
+                                             export_invert_elevation_field,
+                                             lc_diameter, lc_default_diameter, export_diameter_field,
+                                             export_height_field,
+                                             dtm,
+                                             error_elevation, lc_interpolate_errors, lc_zero_error, local_verbose):
+            if local_verbose == 1:
+                msg("--------------------------")
+                msg("Executing Create3DPointFromPointAttributes...")
+
+            start_time = time.clock()
+
+            try:
+                i = 0
+                msg_prefix = ""
+                failed = True
+                rimelev_field = "util_rimelev"
+                error_field = "error"
+                point_fieldtype = "SHORT"
+
+                # set all diameter values
+                # check if diameter attribute exists
+                if lc_diameter:
+                    if common_lib.check_fields(lc_input_layer, [lc_diameter], False, verbose) == 0:
+                        common_lib.set_null_or_negative_to_value_in_fields(lc_input_layer, [lc_diameter],
+                                                                          [lc_default_diameter], True, verbose)
+                        common_lib.delete_add_field(lc_input_layer, export_diameter_field, "DOUBLE")
+                        arcpy.CalculateField_management(lc_input_layer, export_diameter_field, "!" + lc_diameter + "!",
+                                                        "PYTHON_9.3")
+                    else:  # create a default attribute
+                        common_lib.delete_add_field(lc_input_layer, export_diameter_field, "DOUBLE")
+                        arcpy.CalculateField_management(lc_input_layer, export_diameter_field, lc_default_diameter,
+                                                        "PYTHON_9.3")
+                        lc_diameter = export_diameter_field
+                else:
+                    common_lib.delete_add_field(lc_input_layer, export_diameter_field, "DOUBLE")
+                    arcpy.CalculateField_management(lc_input_layer, export_diameter_field, lc_default_diameter,
+                                                    "PYTHON_9.3")
+                    lc_diameter = export_diameter_field
+
+                if common_lib.get_xy_unit(lc_input_layer, local_verbose) == "Feet":
+                    conv_factor = 1
+                else:
+                    conv_factor = 0.3048
+
+                min_depth = conv_factor * 1
+                max_depth = conv_factor * 100
+
+                # copy attributes to default util ones
+                common_lib.delete_add_field(lc_input_layer, export_invert_elevation_field, "DOUBLE")
+                common_lib.delete_add_field(lc_input_layer, rimelev_field, "DOUBLE")
+                common_lib.delete_add_field(lc_input_layer, export_height_field, "DOUBLE")
+
+                arcpy.CalculateField_management(lc_input_layer, export_invert_elevation_field,
+                                                "!" + lower_invert_elevation_field + "!", "PYTHON_9.3")
+                arcpy.CalculateField_management(lc_input_layer, rimelev_field, "!" + upper_rim_elevation_field + "!",
+                                                "PYTHON_9.3")
+
+                # create surface from good values
+                if lc_interpolate_errors:
+                    Z_field = "Z"
+                    invertZ_field = "invertZ"
+
+                    # interpolate invert elevations
+                    surface = common_lib.create_surface_from_points(ws, tin_ws, lc_input_layer,
+                                                                   export_invert_elevation_field, error_elevation)
+
+                    if surface:
+                        arcpy.AddSurfaceInformation_3d(lc_input_layer, surface, Z_field, "BILINEAR", 1, 1, 0, None)
+                        common_lib.delete_add_field(lc_input_layer, invertZ_field, "DOUBLE")
+                        arcpy.CalculateField_management(lc_input_layer, invertZ_field, "!" + Z_field + "!",
+                                                        "PYTHON_9.3")
+
+                        # interpolate rim elevations
+                        if arcpy.Exists(dtm):
+                            common_lib.delete_fields(lc_input_layer, [Z_field])
+                            arcpy.AddSurfaceInformation_3d(lc_input_layer, dtm, Z_field, "BILINEAR", 1, 1, 0, None)
+
+                        # check invert and rim elevation values
+                        with arcpy.da.UpdateCursor(lc_input_layer,
+                                                   [export_invert_elevation_field, invertZ_field, rimelev_field,
+                                                    Z_field]) as cursor:
+                            for row in cursor:
+                                if lc_zero_error:
+                                    if row[0] is None or row[0] == 0 or row[
+                                        0] == error_elevation:  # error with invert elevation
+                                        if row[1]:
+                                            row[0] = row[1]
+                                        else:
+                                            row[0] = error_elevation
+                                    if row[2] is None or row[2] == 0 or row[
+                                        2] == error_elevation:  # error with rim elevation
+                                        if row[3]:
+                                            row[2] = row[3]
+                                        else:
+                                            row[2] = error_elevation
+                                else:
+                                    if row[0] is None or row[0] == error_elevation:  # error with invert elevation
+                                        if row[1]:
+                                            row[0] = row[1]
+                                        else:
+                                            row[0] = error_elevation
+                                    if row[2] is None or row[2] == error_elevation:  # error with rim elevation
+                                        if row[3]:
+                                            row[2] = row[3]
+                                        else:
+                                            row[2] = error_elevation
+
+                                cursor.updateRow(row)
+                    else:
+                        arcpy.AddWarning("Can't interpolate values; not enough good points to create surface.")
+
+                # recalculate NULL values to error value
+                arcpy.AddMessage("Recalculating NULL values to " + str(error_elevation))
+
+                s = 0
+
+                with arcpy.da.UpdateCursor(lc_input_layer, [export_invert_elevation_field, rimelev_field,
+                                                            export_height_field]) as cursor:
+                    for row in cursor:
+                        # set invert attribute
+                        if row[0] is None:
+                            row[0] = int(error_elevation)
+                        else:
+                            if lc_zero_error:
+                                if row[0] == 0:
+                                    row[0] = int(error_elevation)
+
+                        # set rim attribute
+                        if row[1] is None:
+                            row[1] = int(error_elevation)
+                        else:
+                            if lc_zero_error:
+                                if row[1] == 0:
+                                    row[1] = int(error_elevation)
+
+                        # set height attribute
+                        if row[0] and row[1]:
+                            if row[1] > (row[0] + min_depth) and row[1] - row[0] < max_depth:
+                                #                    if (row[0] + min_depth) < row[1] - row[0] < max_depth:       # assume max manhole depth is less than 100 and more than 1
+                                if lc_zero_error:
+                                    if row[0] == 0 or row[1] == 0:
+                                        row[2] = error_elevation - row[0]
+                                    else:
+                                        row[2] = row[1] - row[0]
+                                else:
+                                    row[2] = row[1] - row[0]
+                            else:
+                                row[2] = error_elevation - row[0]
+                        else:
+                            row[2] = error_elevation
+
+                        cursor.updateRow(row)
+                        s += 1
+
+                # create 3D points
+                points3D = os.path.join(out_ws, out_name + "_3Dpoints")
+                if arcpy.Exists(points3D):
+                    arcpy.Delete_management(points3D)
+
+                arcpy.FeatureTo3DByAttribute_3d(lc_input_layer, points3D, export_invert_elevation_field)
+
+                # calculate error field
+                common_lib.delete_add_field(points3D, error_field, point_fieldtype)
+                arcpy.AddMessage("Calculating errors ...")
+
+                s = 0
+
+                z_property = "Z"
+                arcpy.AddZInformation_3d(points3D, z_property)
+
+                # set error_field against original attributes
+                with arcpy.da.UpdateCursor(points3D,
+                                           [lower_invert_elevation_field, error_field, z_property, export_height_field,
+                                            upper_rim_elevation_field, rimelev_field]) as cursor:
+                    for row in cursor:
+                        if lc_zero_error:  # if zero is error
+                            if row[4] == 0 or row[4] is None:
+                                if row[5] == error_elevation:
+                                    row[1] = int(1)
+                                else:
+                                    row[1] = int(2)  # fixed it earlier
+                            else:
+                                if row[0] == 0 or row[0] is None:
+                                    if abs(row[2]) == error_elevation:
+                                        row[1] = int(1)  # NULL values set to user error elevation
+                                    else:
+                                        row[1] = int(2)  # fixed it earlier
+                                else:
+                                    row[1] = int(0)
+                        else:
+                            if row[4] is None:
+                                if row[5] == error_elevation:
+                                    row[1] = int(1)
+                                else:
+                                    row[1] = int(2)
+                            else:
+                                if row[0] is None:
+                                    if abs(row[2]) == error_elevation:
+                                        row[1] = int(1)  # NULL values set to user error elevation
+                                    else:
+                                        row[1] = int(2)  # fixed it earlier
+                                else:
+                                    row[1] = int(0)
+
+                        if row[3] > max_depth:  # assume max manhole depth is less than 100 and larger than 1
+                            row[1] = int(1)
+
+                        # height error
+                        #                if row[3] == error_elevation:
+                        #                    row[1] = int(1)
+
+                        cursor.updateRow(row)
+                        s += 1
+
+                msg_prefix = "Create3DPointFromPointAttributes completed successfully."
+                failed = False
+
+                return points3D
+
+            except:
+                line, filename, synerror = trace()
+                failed = True
+                msg_prefix = ""
+                raise FunctionError(
+                    {
+                        "function": "Create3DPointFromPointAttributes",
+                        "line": line,
+                        "filename": filename,
+                        "synerror": synerror,
+                        "arc": str(arcpy.GetMessages(2))
+                    }
+                )
+
+            finally:
+                end_time = time.clock()
+                msg_body = create_msg_body(msg_prefix, start_time, end_time)
+                if failed:
+                    msg(msg_body, ERROR)
+                else:
+                    if local_verbose == 1:
+                        msg(msg_body)
+                    pass
+
+        try:
+            # Get Attributes from User
+            if debug == 0:
+                # script variables
+                aprx = arcpy.mp.ArcGISProject("CURRENT")
+                home_directory = aprx.homeFolder
+                tin_directory = home_directory + "\\Tins"
+                scripts_directory = aprx.homeFolder + "\\Scripts"
+                rule_directory = aprx.homeFolder + "\\RulePackages"
+                log_directory = aprx.homeFolder + "\\Logs"
+                layer_directory = home_directory + "\\LayerFiles"
+                project_ws = aprx.defaultGeodatabase
+
+                enableLogging = True
+                DeleteIntermediateData = True
+                verbose = 0
+                in_memory_switch = True
+            else:
+                # debug
+                input_layer = r'D:\Gert\Work\Esri\Solutions\Utilities\work2.1\3DUtilities\Local_Scene.gdb\manHoles_test1'
+                rim_elevation = "RIMELEV"
+                invert_elevation = "INVERTELEV"
+                vertex_elevation_unit = "Feet"
+                diameter = "diameter"
+                diameter_unit = "Inches"
+                default_diameter = 1
+                output_features = r'D:\Gert\Work\Esri\Solutions\Utilities\work2.1\3DUtilities\Local_Scene.gdb\manHoles3D_test1'
+                output_as_3dobject = True
+                zero_as_error = True
+                error_elevation = 1000
+                interpolate_errors = True
+                terrain_surface = r'D:\Gert\Work\Esri\Solutions\Utilities\work2.1\3DUtilities\Naperville.gdb\DEM_clip_feet'
+
+                # Create and set workspace location in same directory as input feature class gdb
+                home_directory = r'D:\Gert\Work\Esri\Solutions\Utilities\work2.1\3DUtilities'
+                rule_directory = home_directory + "\RulePackages"
+                layer_directory = home_directory + "\LayerFiles"
+                project_ws = home_directory + "\\Results.gdb"
+                tin_directory = home_directory + "\TINs"
+                scripts_directory = home_directory + "\\Scripts"
+                log_directory = home_directory + "\\Logs"
+                project_ws = home_directory + "\\Results.gdb"
+
+                enableLogging = False
+                DeleteIntermediateData = True
+                verbose = 1
+                in_memory_switch = False
+
+            # set data paths for packing tool so all additional data is stored in the package - ESRI packing only!
+            data_directory_pack = ""
+            geodatabase = ""
+            feature_class = ""
+            model_directory_pack = ""
+            model_file = ""
+            rule_directory_pack = "RulePackages"
+            rule_file = "ExtrudePolygon.rpk"
+            # note: rename all *.lyrx to *.txt first. This is only needed for packaging.
+            layer_directory_pack = "LayerFiles"
+            layer_file = "Line3DError.lyrx"
+
+            common_lib.set_data_paths_for_packaging(data_directory_pack, geodatabase, feature_class, model_directory_pack,
+                                                   model_file, rule_directory_pack, rule_file, layer_directory_pack, layer_file)
+
+            if not os.path.exists(tin_directory):
+                os.makedirs(tin_directory)
+
+            common_lib.set_up_logging(log_directory, TOOLNAME3)
+            start_time = time.clock()
+
+            esri_upper_elevation_field = "esri_upper_elev"
+            esri_lower_elevation_field = "esri_lower_elev"
+            esri_diameter_field = "esri_diameter"
+
+            extrude_rpk = rule_directory + "\\ExtrudePolygon.rpk"
+
+            scratch_ws = common_lib.create_gdb(home_directory, "Intermediate.gdb")
+            output_ws = os.path.dirname(output_features)
+
+            arcpy.env.workspace = scratch_ws
+            arcpy.env.overwriteOutput = True
+
+            if arcpy.Exists(output_ws):
+                arcpy.env.workspace = scratch_ws
+                arcpy.env.overwriteOutput = True
+
+                if arcpy.CheckExtension("3D") == "Available":
+                    arcpy.CheckOutExtension("3D")
+
+                    if arcpy.CheckExtension("Spatial") == "Available":
+                        arcpy.CheckOutExtension("Spatial")
+
+                        arcpy.AddMessage("Processing input features: " + common_lib.get_name_from_feature_class(input_layer))
+
+                        objects3D = None
+                        objects3D_layer = None
+                        Points3D = None
+                        Points3D_layer = None
+
+                        # create 3D points
+                        # check if point feature class has Z values. If not generate 3D points from 2D points using attributes
+                        zValues = arcpy.Describe(input_layer).hasZ
+
+                        # make a copy of the input feature class
+                        input_fc = os.path.join(scratch_ws, common_lib.get_name_from_feature_class(input_layer) + "_copy")
+                        if arcpy.Exists(input_fc):
+                            arcpy.Delete_management(input_fc)
+
+                        # write to fc
+                        arcpy.AddMessage(
+                            "Copying " + common_lib.get_name_from_feature_class(input_layer) + " to " + input_fc)
+                        arcpy.CopyFeatures_management(input_layer, input_fc)
+
+                        # just because of this schema lock
+                        input_layer = input_fc
+
+                        arcpy.AddMessage("Creating 3D points...")
+
+                        # check for output directory
+                        if not os.path.exists(tin_directory):
+                            os.makedirs(tin_directory)
+
+                        # create start and end elevation attributes in segment elevation units
+                        layer_unit = common_lib.get_xy_unit(input_layer, verbose)
+
+                        common_lib.delete_add_field(input_layer, esri_upper_elevation_field, "DOUBLE")
+                        common_lib.delete_add_field(input_layer, esri_lower_elevation_field, "DOUBLE")
+
+                        if not vertex_elevation_unit:
+                            vertex_elevation_unit = layer_unit
+                            arcpy.AddMessage(
+                                "No invert elevation unit detected. Using  XY units instead: " + vertex_elevation_unit)
+
+                        conversion_factor = common_lib.unitConversion(layer_unit, vertex_elevation_unit, verbose)
+                        common_lib.calculate_field_from_other_field(input_layer, input_fc, rim_elevation,
+                                                                   esri_upper_elevation_field,
+                                                                   "multiply", conversion_factor, verbose)
+                        common_lib.calculate_field_from_other_field(input_layer, input_fc, invert_elevation,
+                                                                   esri_lower_elevation_field,
+                                                                   "multiply", conversion_factor, verbose)
+
+                        # check if error elevation is larger than max elevation in the data
+                        maxValue = arcpy.SearchCursor(input_layer, "", "", "",
+                                                      esri_upper_elevation_field + " D").next().getValue(
+                            esri_upper_elevation_field)  # Get 1st row in ascending cursor sort
+
+                        if maxValue > error_elevation:
+                            error_elevation += maxValue
+                            arcpy.AddMessage(
+                                "Maximum value of " + rim_elevation + " attribute is larger than the error elevation value")
+                            arcpy.AddMessage("Setting the error elevation value to: " + str(error_elevation))
+
+                        # create diameter attribute in segment elevation units
+                        common_lib.delete_add_field(input_layer, esri_diameter_field, "DOUBLE")
+
+                        if not diameter_unit:
+                            diameter_unit = layer_unit
+                            arcpy.AddMessage("No Diameter Unit detected. Using  XY units instead: " + diameter_unit)
+
+                        if diameter:
+                            conversion_factor = common_lib.unitConversion(layer_unit, diameter_unit, verbose)
+                            common_lib.calculate_field_from_other_field(input_layer, input_fc, diameter, esri_diameter_field,
+                                                                       "multiply", conversion_factor, verbose)
+                        else:
+                            arcpy.CalculateField_management(input_layer, esri_diameter_field, default_diameter,
+                                                            "PYTHON_9.3")
+
+                        output_name = str(os.path.basename(output_features))
+
+                        # if not zValues:
+                        Points3D = Create3DPointFromPointAttributes(output_ws, scratch_ws, output_name, tin_directory,
+                                                                   input_layer,
+                                                                   esri_upper_elevation_field, esri_lower_elevation_field,
+                                                                   INVERTELEV_FIELD,
+                                                                   esri_diameter_field, default_diameter, DIAMETER_FIELD,
+                                                                   HEIGHT_FIELD,
+                                                                   terrain_surface,
+                                                                   error_elevation, interpolate_errors, zero_as_error,
+                                                                   verbose)
+
+                        Points3D_layer = common_lib.get_name_from_feature_class(Points3D)
+                        arcpy.MakeFeatureLayer_management(Points3D, Points3D_layer)
+
+                        if common_lib.get_z_unit(Points3D_layer, 0) == "Feet":
+                            SymbologyLayer = layer_directory + "\\Point3DError.lyrx"
+                        else:
+                            SymbologyLayer = layer_directory + "\\Point3DError_meters.lyrx"
+
+                        if not arcpy.Exists(SymbologyLayer):
+                            arcpy.AddWarning("Can't find: " + SymbologyLayer + ". Symbolize features by error attribute to see data errors.")
+
+                        if output_as_3dobject:
+                            objects3D = os.path.join(output_ws, output_name + "_3Dobjects")
+                            if arcpy.Exists(objects3D):
+                                arcpy.Delete_management(objects3D)
+
+                            # convert 3D Points to 3D objects
+                            arcpy.AddMessage("Buffering: " + common_lib.get_name_from_feature_class(Points3D))
+
+                            common_lib.delete_add_field(Points3D, RADIUS_FIELD, "DOUBLE")
+                            arcpy.CalculateField_management(Points3D, RADIUS_FIELD, "!" + DIAMETER_FIELD + "! / 2",
+                                                            "PYTHON_9.3")
+
+                            output3d_objects = common_lib.Point3DToObject(scratch_ws, extrude_rpk, Points3D, INVERTELEV_FIELD,
+                                                                         RADIUS_FIELD, HEIGHT_FIELD, objects3D, verbose)
+
+                            objects3D_layer = common_lib.get_name_from_feature_class(output3d_objects)
+                            arcpy.MakeFeatureLayer_management(output3d_objects, objects3D_layer)
+
+                            if common_lib.get_z_unit(objects3D_layer, 0) == "Feet":
+                                SymbologyLayer = layer_directory + "\\PointObject3DError.lyrx"
+                            else:
+                                SymbologyLayer = layer_directory + "\\PointObject3DError_meter.lyrx"
+
+                            if not arcpy.Exists(SymbologyLayer):
+                                arcpy.AddWarning(
+                                    "Can't find: " + SymbologyLayer + ". Symbolize features by error attribute to see data errors.")
+
+                        if DeleteIntermediateData:
+                            fcs = common_lib.listFcsInGDB(scratch_ws)
+                            arcpy.AddMessage("Deleting intermediate data...")
+
+                            for fc in fcs:
+                                arcpy.Delete_management(fc)
+
+                        # here goes all the other if/else
+                        end_time = time.clock()
+                        msg_body = create_msg_body("PointTo3DManHole completed successfully.", start_time, end_time)
+                        msg(msg_body)
+
+                        return Points3D_layer, objects3D_layer
+
+                    else:
+                        raise LicenseErrorSpatial
+                else:
+                    raise LicenseError3D
+
+        except NoLayerFile:
+            print("Can't find Layer file. Exiting...")
+            arcpy.AddError("Can't find Layer file. Exiting...")
+
+        except LicenseError3D:
+            print("3D Analyst license is unavailable")
+            arcpy.AddError("3D Analyst license is unavailable")
+
+        except LicenseErrorSpatial:
+            print("Spatial Analyst license is unavailable")
+            arcpy.AddError("Spatial Analyst license is unavailable")
+
+        except NoNoDataError:
+            print("Input raster does not have NODATA values")
+            arcpy.AddError("Input raster does not have NODATA values")
+
+        except ValueError:
+            print("Input no flood value is not a number.")
+            arcpy.AddError("Input no flood value is not a number.")
+
+        except arcpy.ExecuteError:
+            line, filename, synerror = trace()
+            msg("Error on %s" % line, ERROR)
+            msg("Error in file name:  %s" % filename, ERROR)
+            msg("With error message:  %s" % synerror, ERROR)
+            msg("ArcPy Error Message:  %s" % arcpy.GetMessages(2), ERROR)
+
+        except FunctionError as f_e:
+            messages = f_e.args[0]
+            msg("Error in function:  %s" % messages["function"], ERROR)
+            msg("Error on %s" % messages["line"], ERROR)
+            msg("Error in file name:  %s" % messages["filename"], ERROR)
+            msg("With error message:  %s" % messages["synerror"], ERROR)
+            msg("ArcPy Error Message:  %s" % messages["arc"], ERROR)
+
+        except:
+            line, filename, synerror = trace()
+            msg("Error on %s" % line, ERROR)
+            msg("Error in file name:  %s" % filename, ERROR)
+            msg("with error message:  %s" % synerror, ERROR)
+
+        finally:
+            arcpy.CheckInExtension("3D")
+            arcpy.CheckInExtension("Spatial")
+
+
+    def execute(self, parameters, messages):
+        class NoLayerFile(Exception):
+            pass
+
+        class NoOutput(Exception):
+            pass
+
+        try:
+            """The source code of the tool."""
+            (input_features, upper_elevation, lower_elevation, invert_unit, diameter, diameter_unit,
+            default_diameter, output_features, output_3dobjects,
+            zero_as_error, error_elevation, interpolate_errors, input_raster) = [p.valueAsText for p in parameters[:-4]]
+
+            if diameter_unit == UNDEFINED:
+                diameter_unit = None
+
+            # check if input exists
+            if arcpy.Exists(parameters[0].value):
+                points_3d, objects_3d = self.run(input_layer=parameters[0].value, rim_elevation=upper_elevation, invert_elevation=lower_elevation,
+                                                            vertex_elevation_unit=invert_unit, diameter=diameter, diameter_unit=diameter_unit,
+                                                            default_diameter=parameters[6].value,
+                                                            output_features=output_features,
+                                                            output_as_3dobject=parameters[8].value,
+                                                            zero_as_error=parameters[9].value,
+                                                            error_elevation=parameters[10].value,
+                                                            interpolate_errors=parameters[11].value,
+                                                            terrain_surface=parameters[12].value,
+                                                            debug=0)
+
+                if points_3d:
+                    arcpy.AddMessage("Adding: " + common_lib.get_name_from_feature_class(points_3d))
+
+                    if common_lib.get_z_unit(points_3d, 0) == "Feet":
+                        arcpy.SetParameter(13, points_3d)
+                    else:
+                        arcpy.SetParameter(14, points_3d)
+
+                    if objects_3d:
+                        if common_lib.get_z_unit(objects_3d, 0) == "Feet":
+                            arcpy.SetParameter(15, objects_3d)
+                        else:
+                            arcpy.SetParameter(16, objects_3d)
+                else:
+                    raise NoOutput
+            else:
+                raise NoLayerFile
+
+        except NoLayerFile:
+            print("Can't find Layer file. Exiting...")
+            arcpy.AddError("Can't find Layer file. Exiting...")
+
+        except NoOutput:
+            print("Can't create output. Exiting...")
+            arcpy.AddError("Can't create output. Exiting...")
+
+
+class CreateSurfaceHole(object):
+    def __init__(self):
+        """Define the tool (tool name is the name of the class)."""
+        self.label = "Create Surface Hole"
+        self.description = "Creates a surface that can be used to create a hole in the elevation " + \
+                            "surface so that utilities can be viewed from below the surface."
+        self.canRunInBackground = False
+
+    def getParameterInfo(self):
+        """Define parameter definitions"""
+        input_raster = arcpy.Parameter(displayName="Input Surface",
+                                  name="InputSurface",
+                                  datatype="GPRasterLayer",
+                                  parameterType="Optional",
+                                  direction="Input")
+
+        input_features = arcpy.Parameter(displayName="Input Features",
+                                  name="InputFeatures",
+                                  datatype=["DEFeatureClass", "GPLayer"],
+                                  parameterType="Required",
+                                  direction="Input")
+
+        depth = arcpy.Parameter(displayName="Depth",
+                                  name="Depth",
+                                  datatype = "GPDouble",
+                                  parameterType="Required",
+                                  direction="Input")
+
+        output_raster = arcpy.Parameter(displayName="Output Surface",
+                                  name="OutputSurface",
+                                  datatype="GPRasterLayer",
+                                  parameterType="Optional",
+                                  direction="Output")
+
+        layer = arcpy.Parameter(displayName="layer",
+                                  name="layer",
+                                  datatype="GPLayer",
+                                  parameterType="Derived", enabled=True,
+                                  direction="Output")
+
+        layer2 = arcpy.Parameter(displayName="layer",
+                                  name="layer",
+                                  datatype="GPFeatureLayer",
+                                  parameterType="Derived", enabled=True,
+                                  direction="Output")
+
+        aprx = arcpy.mp.ArcGISProject("CURRENT")
+        layer_directory = aprx.homeFolder + "\\LayerFiles"
+
+        layer2.symbology = os.path.join(layer_directory, 'hole_texture2.lyrx')
+
+        params = [input_raster, input_features, depth, output_raster, layer, layer2]
+        return params
+
+    def isLicensed(self):
+        """Set whether tool is licensed to execute."""
+        return True
+
+
+    def updateParameters(self, params):
+        """Modify the values and properties of parameters before internal
+        validation is performed.  This method is called whenever a parameter
+        has been changed."""
+
+        return
+
+    def updateMessages(self, params):
+        """Modify the messages created by internal validation for each tool
+        parameter.  This method is called after internal validation."""
+
+        return
+
+    def execute(self, parameters, messages):
+        class NoLayerFile(Exception):
+            pass
+
+        class NoOutput(Exception):
+            pass
+
+        try:
+            """The source code of the tool."""
+            # check if input exists
+            if arcpy.Exists(parameters[0].value):
+                surface, polygon = create_surface_hole.main(input_raster=parameters[0].value,
+                                                         input_layer=parameters[1].value,
+                                                         depth=parameters[2].value,
+                                                         output_raster=parameters[3].valueAsText,
+                                                         debug=0)
+
+                if surface:
+                    arcpy.AddMessage("Created: " + common_lib.get_name_from_feature_class(surface))
+                    arcpy.SetParameter(4, surface)
+
+                    if polygon:
+                        arcpy.AddMessage("Adding: " + common_lib.get_name_from_feature_class(polygon) + " as extent with texture.")
+                        arcpy.SetParameter(5, polygon)
+                else:
+                    raise NoOutput
+            else:
+                raise NoLayerFile
+
+        except NoLayerFile:
+            print("Can't find Layer file. Exiting...")
+            arcpy.AddError("Can't find Layer file. Exiting...")
+
+        except NoOutput:
+            print("Can't create output. Exiting...")
+            arcpy.AddError("Can't create output. Exiting...")
+
 
 # for debug only!
 def main():
+
+    tool = Create3DGravityMains()
+    tool.run("", "", "", "", "", "", "", "", "", "", "", "", "", 1)
+
     tool = Create3DLaterals()
     tool.run("", "", "", "", "", "", "", "", "", 1)
 
+    tool = Create3DManholes()
+    tool.run("", "", "", "", "", "", "", "", "", "", "", "", "", 1)
+
+    create_surface_hole.main("", "", "", "", 1)
+
 if __name__ == "__main__":
     main()
+
+

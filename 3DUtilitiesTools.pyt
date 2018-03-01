@@ -12,4 +12,4 @@ class Toolbox(object):
         self.alias = "3D Utilities Tools"
 
         # List of tool classes associated with this toolbox
-        self.tools = [Create3DGravityMains, Create3DLaterals]
+        self.tools = [Create3DGravityMains, Create3DLaterals, Create3DManholes, CreateSurfaceHole]
