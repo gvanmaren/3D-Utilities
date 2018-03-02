@@ -98,8 +98,6 @@ def create_hole_in_surface(local_sw, local_input_surface, local_input_features, 
             pass
 
 
-
-
 def main(input_raster, input_layer, depth, output_raster, debug):
     """The source code of the tool."""
 
@@ -161,7 +159,6 @@ def main(input_raster, input_layer, depth, output_raster, debug):
             tin_directory = home_directory + "\TINs"
             scripts_directory = home_directory + "\\Scripts"
             log_directory = home_directory + "\\Logs"
-            project_ws = home_directory + "\\Results.gdb"
 
             enableLogging = False
             DeleteIntermediateData = True
@@ -223,7 +220,7 @@ def main(input_raster, input_layer, depth, output_raster, debug):
                     output_layer = common_lib.get_name_from_feature_class(polygon)
                     arcpy.MakeFeatureLayer_management(polygon, output_layer)
                 else:
-                    msg_body = create_msg_body("Can't find" + symbology_layer + " in " + layer_directory, 0, 0)
+                    msg_body = create_msg_body("Can't find" + SymbologyLayer + " in " + layer_directory, 0, 0)
                     msg(msg_body, WARNING)
 
                 end_time = time.clock()

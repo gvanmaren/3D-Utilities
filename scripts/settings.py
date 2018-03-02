@@ -6,6 +6,7 @@ TOOLNAME1 = "Create3DGravityMains"
 TOOLNAME2 = "CreateLaterals"
 TOOLNAME3 = "Create3DManholes"
 TOOLNAME4 = "CreateHoleSurface"
+TOOLNAME5 = "CreateElevationTilePackage"
 
 # error name
 # used when printing errors
